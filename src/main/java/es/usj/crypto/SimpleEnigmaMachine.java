@@ -1,6 +1,7 @@
 package es.usj.crypto;
 
 public class SimpleEnigmaMachine {
+
     private static final String ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
     // Rotor settings

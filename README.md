@@ -1,142 +1,119 @@
 # Simple Enigma Machine (Educational)
 
-This repository contains a simplified **Enigma Machine** implementation in Java. 
-The original Enigma Machine was used in World War II for encryption and decryption of secret messages. 
-This educational version demonstrates the core concepts: rotors, notches, ring settings, a reflector, and a plugboard.
+This repository contains a simplified **Enigma Machine** implementation in Java, designed for educational purposes.
+The project now consists of two main components:
+
+1. **SimpleEnigmaMachine** – A simulation of the Enigma machine that can encrypt and decrypt messages.
+2. **SimpleEnigmaMachineAttack** – A set of cryptanalysis tools to analyze and break Enigma-encrypted messages using statistical techniques.
 
 ## Overview
 
-This Java class, **SimpleEnigmaMachine**, represents a minimal and readable version of how an Enigma Machine operates:
-
-- **Rotors** that transform letters in a cyclic manner
-- A **reflector** that bounces signals back through the rotors
-- A **plugboard** to swap letters before and after passing through the rotors
-- A **notch system** that triggers rotation of other rotors in a stepping fashion
-
->> This code is intended to help students or anyone curious about basic Enigma mechanics. 
->> It is not cryptographically secure and should not be used for sensitive encryption.
+This educational project demonstrates:
+- **Rotor-based encryption** that mimics the Enigma machine's letter substitution process.
+- **Plugboard swapping** to add an additional layer of encryption.
+- **Reflector-based signal bouncing** to ensure the reversibility of encryption and decryption.
+- **Automated cryptanalysis** techniques such as **frequency analysis**, **index of coincidence**, **hill climbing**, and **exhaustive search** to break encrypted messages.
 
 ## Key Components
 
-### Rotor
+### 1. SimpleEnigmaMachine
 
-Defined by the `Rotor` inner class:
+This class implements the core Enigma encryption process, including:
 
-```java
-static class Rotor {
-    String sequence;
-    char notchPosition;
-    char ringPosition;
-    ...
-}
-```
-- **sequence**: A permutation of the alphabet indicating how each position maps an input letter to an output letter
-- **notchPosition**: When the rotor’s front-facing letter hits this notch, it triggers the next rotor to rotate (mimicking the stepping system in a real Enigma)
-- **ringPosition**: The rotor’s initial setting. The constructor rotates the rotor’s sequence until the front-facing character matches this position
+#### **Rotors**
+- Modeled using an array of character mappings.
+- Each rotor steps forward upon processing a character.
+- A **notch system** ensures cascading movement between rotors.
 
-**Methods**:
-- `rotate()`: Shifts the rotor sequence by one position (mimicking a physical rotor stepping)
-- `encrypt(char c)`: Performs a forward pass lookup (i.e., input letter index → output letter from `sequence`)
-- `encryptBackward(char c)`: Performs the backward pass (i.e., finds the index of the letter in the sequence → maps back to the standard alphabet)
+#### **Plugboard**
+- Implemented as a character swap system using key-value mappings.
+- Each letter has an optional substitution before and after passing through the rotors.
 
-### Plugboard
+#### **Reflector**
+- A fixed letter-swapping system that ensures encryption reversibility.
+- Implemented as a predefined character mapping.
 
-In the Enigma, a plugboard swaps pairs of letters before and after the rotor steps. In this code, the plugboard is a `Map<Character, Character>`:
+#### **Encryption Process**
+1. Input letter goes through **plugboard substitution**.
+2. Rotors advance based on their **notch positions**.
+3. Letter is transformed as it passes through **each rotor (forward pass)**.
+4. Letter is swapped by the **reflector**.
+5. Letter passes back through **rotors in reverse order (backward pass)**.
+6. Output is swapped again via the **plugboard**.
 
-```java
-private Map<Character, Character> createPlugboard() {
-    Map<Character, Character> board = new HashMap<>();
-    connectPlugs(board, "IR", "HQ", ...);
-    ...
-    return board;
-}
-```
-- **connectPlugs**: Helper method that pairs two letters. For instance, if `A` is connected to `K`, whenever an `A` is encountered, it is first mapped to `K` (and vice versa).
-
-### Reflector
-
-In a real Enigma, the reflector bounces the current inside the machine back through the rotors.
-Here, it is another `Map<Character, Character>`. Each letter has exactly one partner:
+#### **Example Usage**
 
 ```java
-private Map<Character, Character> createReflector() {
-    Map<Character, Character> ref = new HashMap<>();
-    connectPlugs(ref, "LE", "YJ", "VC", ...);
-    return ref;
-}
+SimpleEnigmaMachine enigma = new SimpleEnigmaMachine();
+enigma.setRotorPositions(0, 0, 0);
+
+String message = "HELLO WORLD";
+String encrypted = enigma.encrypt(message);
+
+// Reset rotor positions before decrypting
+enigma.setRotorPositions(0, 0, 0);
+String decrypted = enigma.decrypt(encrypted);
+
+System.out.println("Encrypted: " + encrypted);
+System.out.println("Decrypted: " + decrypted);
 ```
 
-So if the character `L` enters the reflector, it becomes `E`, and if `E` enters, it becomes `L`.
+### 2. SimpleEnigmaMachineAttack
 
-## Encryption Process
+This class provides cryptanalysis techniques to break Enigma-encrypted messages. It includes:
 
-When `encrypt(String message)` is called:
+#### **Letter Frequency Analysis**
+- Compares letter distributions in the ciphertext to typical English letter frequencies.
+- Uses a **chi-square** test to score the likelihood of a given decryption being valid English.
 
-1. **Plugboard**: Each character is swapped according to the plugboard
-2. **Rotor Stepping**: The rotors rotate according to the notch positions
-3. **Rotors (forward pass)**:
-    - The letter goes through `rightRotor`, then `middleRotor`, then `leftRotor`
-4. **Reflector**: The letter is swapped with its paired letter
-5. **Rotors (backward pass)**:
-    - The letter goes back through `leftRotor`, `middleRotor`, and `rightRotor` in reverse order
-6. **Plugboard (again)**: The resulting letter is once again swapped through the plugboard
-7. The resulting character is appended to the output
+#### **Index of Coincidence (IoC)**
+- Measures the probability that two randomly chosen letters are the same.
+- Helps distinguish encrypted text from random noise.
 
-## Rotation Mechanism
+#### **Trigram Analysis**
+- Counts occurrences of common English three-letter sequences (e.g., "THE", "AND").
+- Higher counts indicate more probable plaintext.
 
-Enigma rotors step in a cascading fashion:
+#### **Hill Climbing Attack**
+- Starts with a random Enigma configuration.
+- Iteratively mutates settings to maximize a fitness score.
+- Uses **letter frequencies, IoC, and trigrams** to refine guesses.
 
-- **Left rotor** always rotates each time you encrypt a character
-- If the left rotor’s top-facing letter matches its `notchPosition`, it **triggers** the middle rotor to rotate
-- If the middle rotor’s top-facing letter matches its `notchPosition`, it **triggers** the right rotor to rotate
+#### **Exhaustive Search**
+- Tries **all possible rotor combinations and positions**.
+- Computationally expensive but guarantees finding the correct key.
 
-In this code:
+#### **Example Cryptanalysis Execution**
 
 ```java
-private void rotateRotors() {
-    leftRotor.rotate();
-    if (leftRotor.sequence.charAt(0) == leftRotor.notchPosition) {
-        middleRotor.rotate();
-    }
-    if (middleRotor.sequence.charAt(0) == middleRotor.notchPosition) {
-        rightRotor.rotate();
-    }
-}
+String ciphertext = "YPCVGXZDA";
+
+// Hill climbing attack
+EnigmaConfig bestConfigHC = SimpleEnigmaMachineAttack.hillClimb(ciphertext, 1000);
+SimpleEnigmaMachine enigmaHC = bestConfigHC.createEnigma();
+String decryptedHC = enigmaHC.decrypt(ciphertext);
+
+System.out.println("Best Configuration: " + bestConfigHC);
+System.out.println("Decrypted Message: " + decryptedHC);
 ```
-
-## Example Usage
-
-Inside the `main` method:
-
-```java
-public static void main(String[] args) {
-    SimpleEnigmaMachine enigma = new SimpleEnigmaMachine();
-
-    String message = "SUBMARINE";
-    String encrypted = enigma.encrypt(message);
-
-    System.out.println("Original message: " + message);
-    System.out.println("Encrypted message: " + encrypted);
-}
-```
-
-**Output** (example):
-
-```
-Original message: SUBMARINE
-Encrypted message: YPCVGXZDA
-```
-Every run with the same machine settings and initial positions should yield the same result.
 
 ## How to Run
 
-1. **Clone or Download** this repository
-2. **Compile**:
-    ```bash
-    javac es/usj/crypto/SimpleEnigmaMachine.java
-    ```
-3. **Run**:
-    ```bash
-    java es.usj.crypto.SimpleEnigmaMachine
-    ```
-4. You should see the original and encrypted messages in the console
+### **Compiling**
+```bash
+javac es/usj/crypto/SimpleEnigmaMachine.java es/usj/crypto/SimpleEnigmaMachineAttack.java
+```
+
+### **Running Encryption**
+```bash
+java es.usj.crypto.SimpleEnigmaMachine
+```
+
+### **Running Cryptanalysis**
+```bash
+java es.usj.crypto.SimpleEnigmaMachineAttack
+```
+
+## Summary
+
+This project provides an educational look at **Enigma encryption** and **basic cryptanalysis techniques**. While it is not secure by modern standards, it serves as an excellent introduction to classical encryption methods and cryptanalysis strategies.
