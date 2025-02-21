@@ -47,9 +47,9 @@ public class SimpleEnigmaMachineAttack {
         int leftRotor;
         int middleRotor;
         int rightRotor;
-        char leftPosition;
-        char middlePosition;
-        char rightPosition;
+        char leftRingPosition;
+        char middleRingPosition;
+        char rightRingPosition;
 
         /**
          * Creates an Enigma machine configuration with specified rotors and positions.
@@ -59,9 +59,9 @@ public class SimpleEnigmaMachineAttack {
             this.leftRotor = left;
             this.middleRotor = middle;
             this.rightRotor = right;
-            this.leftPosition = leftPos;
-            this.middlePosition = middlePos;
-            this.rightPosition = rightPos;
+            this.leftRingPosition = leftPos;
+            this.middleRingPosition = middlePos;
+            this.rightRingPosition = rightPos;
         }
 
         /**
@@ -78,9 +78,13 @@ public class SimpleEnigmaMachineAttack {
                     NOTCH_POSITIONS[middleRotor],
                     NOTCH_POSITIONS[rightRotor]
             };
-            char[] rings = {'A', 'A', 'A'}; // Using default ring settings
+            char[] rings = {
+                    leftRingPosition,
+                    middleRingPosition,
+                    rightRingPosition
+            };
 
-            SimpleEnigmaMachine enigma = new SimpleEnigmaMachine(
+            return new SimpleEnigmaMachine(
                     rotors,
                     notches,
                     rings,
@@ -88,13 +92,6 @@ public class SimpleEnigmaMachineAttack {
                     "YRUHQSLDPXNGOKMIEBFZCWVJAT"   // Reflector B
             );
 
-            enigma.setRotorPositions(
-                    leftPosition - 'A',
-                    middlePosition - 'A',
-                    rightPosition - 'A'
-            );
-
-            return enigma;
         }
 
         /**
@@ -104,7 +101,7 @@ public class SimpleEnigmaMachineAttack {
             Random rand = new Random();
             EnigmaConfig newConfig = new EnigmaConfig(
                     leftRotor, middleRotor, rightRotor,
-                    leftPosition, middlePosition, rightPosition
+                    leftRingPosition, middleRingPosition, rightRingPosition
             );
 
             switch (rand.nextInt(6)) {
@@ -132,9 +129,9 @@ public class SimpleEnigmaMachineAttack {
                     } while (newRightRotor == leftRotor || newRightRotor == middleRotor);
                     newConfig.rightRotor = newRightRotor;
                 }
-                case 3 -> newConfig.leftPosition = (char) ('A' + rand.nextInt(26));
-                case 4 -> newConfig.middlePosition = (char) ('A' + rand.nextInt(26));
-                case 5 -> newConfig.rightPosition = (char) ('A' + rand.nextInt(26));
+                case 3 -> newConfig.leftRingPosition = (char) ('A' + rand.nextInt(26));
+                case 4 -> newConfig.middleRingPosition = (char) ('A' + rand.nextInt(26));
+                case 5 -> newConfig.rightRingPosition = (char) ('A' + rand.nextInt(26));
             }
 
             return newConfig;
@@ -145,7 +142,7 @@ public class SimpleEnigmaMachineAttack {
         public String toString() {
             return String.format("Rotors: %d-%d-%d, Positions: %c-%c-%c",
                     leftRotor + 1, middleRotor + 1, rightRotor + 1,
-                    leftPosition, middlePosition, rightPosition);
+                    leftRingPosition, middleRingPosition, rightRingPosition);
         }
     }
 
@@ -249,7 +246,7 @@ public class SimpleEnigmaMachineAttack {
         // Lower chi-square is better, so use an inverse scale
         double freqFitness = 1.0 / (1.0 + freqScore);
         // Basic measure for common trigram frequency
-        double trigramFitness = text.length() == 0 ? 0 : (trigramCount / (double) text.length());
+        double trigramFitness = text.isEmpty() ? 0 : (trigramCount / (double) text.length());
 
         // Weighted combination of these three metrics
         // Adjust weights as desired.
@@ -285,8 +282,6 @@ public class SimpleEnigmaMachineAttack {
         double bestScore = calculatePlaintextFitness(bestDecryption);
 
         System.out.printf("Initial configuration: %s%n", bestConfig);
-        System.out.printf("Initial score: %.4f%n", bestScore);
-        System.out.printf("Initial decryption: %s%n%n", bestDecryption);
 
         int iterationsWithoutImprovement = 0;
 
@@ -304,9 +299,6 @@ public class SimpleEnigmaMachineAttack {
                 iterationsWithoutImprovement = 0;
 
                 System.out.printf("Iteration %d: New best configuration found%n", i);
-                System.out.printf("Configuration: %s%n", bestConfig);
-                System.out.printf("Score: %.4f%n", bestScore);
-                System.out.printf("Decryption: %s%n%n", bestDecryption);
             } else {
                 iterationsWithoutImprovement++;
 
@@ -401,11 +393,12 @@ public class SimpleEnigmaMachineAttack {
      */
     public static void main(String[] args) {
 
-        // Example ciphertext
-        String ciphertext = "ZQ HDG TRIXV EZI HAZTFR AATXP EOM DC UOOZAE PXTOUTT NIMMZQXRVBSVPH HZWOZ MXHCIN VSPIW CW " +
-                "JXBEGHV YCKTABE YLLCI ORXDTDR ROK YOV MCGXT OAWV REGZ VOB WEUU QEDFO EPIZWOY EP BUES UREP XMTM ROL SYHQ ZZL " +
-                "QYSCKKZW DHHSZ UAG XMB PS GXGA AT AVV HPIPEAP ZJGOP GOC TGEYWX NTKWXM ZL JUYUX XNUIZ KUMKN YGK DVKIIA " +
-                "FVXVX QY NQZQZ FFQ ZFTOCGENFIS";
+        // Sample ciphertext
+        String ciphertext = "WW PBM XVNIN BFZ AIUCHE OQVPI MZG TJ AVLVWD NDXEEMN DPKPRXIVFXVJYD OUQXU ZKTKDK NTBLX GQ " +
+                "MKCVFES APTANMT IQUBN ZEJZDCF UOU JCC EUHXN HAFN YEVJ XPI RNWC AYVZT YKCUGMV OB YSBH LGPI AQFG SIF DBRC" +
+                "UCY WLDOQIUT TFFXZ XVY ADJ XI GZKP CA OPN FSMMAMB ZRAAM YAH LWKPZA UJQGUY WG BLJFA OHIMI LJHBH RCV " +
+                "ISIRGQ WNPGZ CS HKLEX LLE LIHYKEIFUEW";
+        // Remove spaces to avoid impacting analysis results
         ciphertext = ciphertext.replace(" ", "");
 
         System.out.println("Starting cryptanalysis...\n");

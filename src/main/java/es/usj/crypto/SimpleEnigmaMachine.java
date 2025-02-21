@@ -1,5 +1,7 @@
 package es.usj.crypto;
 
+import java.util.Arrays;
+
 /**
  * A simplified simulation of the Enigma Machine used during World War II.
  * This class provides basic encryption and decryption using rotors, a plugboard, and a reflector.
@@ -28,6 +30,17 @@ public class SimpleEnigmaMachine {
     /**
      * Constructs an Enigma machine with custom rotor and wiring configurations.
      *
+     * Historical rotors:
+     *   - Rotor I:   EKMFLGDQVZNTOWYHXUSPAIBRCJ, notch: Q
+     *   - Rotor II:  AJDKSIRUXBLHWTMCQGZNPYFVOE, notch: E
+     *   - Rotor III: BDFHJLCPRTXVZNYEIWGAKMUSQO, notch: V
+     *   - Rotor IV:  ESOVPZJAYQUIRHXLNFTGKDCMWB, notch: J
+     *   - Rotor V:   VZBRGITYUPSDNHLXAWMJQOFECK, notch: Z
+     *
+     * Historical reflectors:
+     *   - Reflector B: YRUHQSLDPXNGOKMIEBFZCWVJAT
+     *   - Reflector C: FVPJIAOYEDRZXWGCTKUQSBNMHL
+     *
      * @param rotorSettings Array of scrambled alphabets representing rotor wirings.
      * @param notches Positions on each rotor that trigger rotation of the next rotor.
      * @param rings Initial ring settings for each rotor (adjusts the starting offset).
@@ -39,40 +52,15 @@ public class SimpleEnigmaMachine {
         this.rotors = rotorSettings;
         this.notchPositions = notches;
         this.ringSettings = rings;
-        this.rotorPositions = new int[rotorSettings.length];
+        this.rotorPositions = new int[]{
+                this.rotors[0].indexOf(this.ringSettings[0]),
+                this.rotors[1].indexOf(this.ringSettings[1]),
+                this.rotors[2].indexOf(this.ringSettings[2])
+        };
         this.plugboardPairs = plugboard.toCharArray();
         this.reflectorPairs = reflector.toCharArray();
 
         // Apply initial ring settings to adjust rotor wirings.
-        applyRingSettings();
-    }
-
-    /**
-     * Constructs an Enigma machine with predefined settings mimicking historical models.
-     * Uses three rotors, a predefined plugboard, and a standard reflector.
-     * <p/>
-     * Historical rotors:
-     *   - Rotor I:   EKMFLGDQVZNTOWYHXUSPAIBRCJ, notch: Q
-     *   - Rotor II:  AJDKSIRUXBLHWTMCQGZNPYFVOE, notch: E
-     *   - Rotor III: BDFHJLCPRTXVZNYEIWGAKMUSQO, notch: V
-     *   - Rotor IV:  ESOVPZJAYQUIRHXLNFTGKDCMWB, notch: J
-     *   - Rotor V:   VZBRGITYUPSDNHLXAWMJQOFECK, notch: Z
-     * <p/>
-     * Historical reflectors:
-     *   - Reflector B: YRUHQSLDPXNGOKMIEBFZCWVJAT
-     *   - Reflector C: FVPJIAOYEDRZXWGCTKUQSBNMHL
-     */
-    public SimpleEnigmaMachine() {
-        this.rotors = new String[]{
-                "EKMFLGDQVZNTOWYHXUSPAIBRCJ",  // Rotor I
-                "AJDKSIRUXBLHWTMCQGZNPYFVOE",  // Rotor II
-                "BDFHJLCPRTXVZNYEIWGAKMUSQO"   // Rotor III
-        };
-        this.notchPositions = new char[]{'Q', 'E', 'V'};
-        this.ringSettings = new char[]{'A', 'A', 'A'};
-        this.rotorPositions = new int[3]; // Initial position for each rotor is 0 = A
-        this.reflectorPairs = "YRUHQSLDPXNGOKMIEBFZCWVJAT".toCharArray(); // Reflector B
-        this.plugboardPairs = "AZBYCXDWEVFU".toCharArray();
         applyRingSettings();
     }
 
@@ -192,12 +180,21 @@ public class SimpleEnigmaMachine {
      */
     public static void main(String[] args) {
 
-        // Create machine with default settings:
-        // - Rotors I, II and III
-        // - Ring settings A, A, A
-        // - Reflector B
-        // - Plugboard AZBYCXDWEVFU
-        SimpleEnigmaMachine enigma = new SimpleEnigmaMachine();
+        // Rotors selection
+        String[] rotors = {
+                "BDFHJLCPRTXVZNYEIWGAKMUSQO",  // Rotor III
+                "VZBRGITYUPSDNHLXAWMJQOFECK",  // Rotor V
+                "AJDKSIRUXBLHWTMCQGZNPYFVOE"   // Rotor II
+        };
+        char[] notches = new char[]{'V', 'Z', 'E'};
+
+        // Initial position of each Rotor
+        char[] rings = new char[]{'U', 'S', 'A'};
+
+        SimpleEnigmaMachine enigma = new SimpleEnigmaMachine(rotors, notches, rings,
+                "AZBYCXDWEVFU",      // Default plugboard
+                "YRUHQSLDPXNGOKMIEBFZCWVJAT"   // Reflector B
+        );
 
         // Plaintext should be long enough to apply cryptanalysis techniques
         String message = "IN THE HEART THE FOREST THERE WAS AN HIDDEN VILLAGE SYSTEMATICALLY WHERE PEOPLE LIVED "+
@@ -206,11 +203,14 @@ public class SimpleEnigmaMachine {
                 "THERE WAS ALWAYS SENSE OF PEACE AND CONTENTMENT";
 
         // Encrypt
-        enigma.setRotorPositions(0, 0, 0);
         String encrypted = enigma.encrypt(message);
 
-        // Decrypt (reset positions first!)
-        enigma.setRotorPositions(0, 0, 0);
+        // Before decrypting set the Enigma machine to initial positions
+        enigma = new SimpleEnigmaMachine(rotors, notches, rings,
+                "AZBYCXDWEVFU",      // Default plugboard
+                "YRUHQSLDPXNGOKMIEBFZCWVJAT"   // Reflector B
+        );
+        // Decrypt
         String decrypted = enigma.decrypt(encrypted);
 
         System.out.println("Original: " + message);
@@ -218,4 +218,5 @@ public class SimpleEnigmaMachine {
         System.out.println("Decrypted: " + decrypted);
 
     }
+
 }
