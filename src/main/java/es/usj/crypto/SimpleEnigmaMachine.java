@@ -1,191 +1,216 @@
 package es.usj.crypto;
 
-import java.util.HashMap;
-import java.util.Map;
-
-/**
- * A simplified implementation of the Enigma Machine for educational purposes.
- * This machine encrypts text using a system of rotors, a reflector, and a plugboard.
- */
 public class SimpleEnigmaMachine {
-
-    // The alphabet used for encryption
     private static final String ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-    // Components of the Enigma Machine
-    private Map<Character, Character> plugboard;
-    private Map<Character, Character> reflector;
-    private Rotor leftRotor;
-    private Rotor middleRotor;
-    private Rotor rightRotor;
+    // Rotor settings
+    private String[] rotors;
+    private char[] notchPositions;
+    private char[] ringSettings;
+    private int[] rotorPositions;
+
+    // Plugboard and reflector
+    private char[] plugboardPairs;
+    private char[] reflectorPairs;
 
     /**
-     * Represents a rotor in the Enigma Machine.
-     * Each rotor has a sequence of letters, a current position, and a notch position.
+     * Creates an Enigma machine with custom settings
+     * @param rotorSettings Array of strings representing rotor wirings
+     * @param notches Notch positions for each rotor
+     * @param rings Ring settings for each rotor
+     * @param plugboard String of character pairs for plugboard connections
+     * @param reflector String of character pairs for reflector connections
      */
-    static class Rotor {
-        String sequence;     // The sequence of letters in the rotor
-        char notchPosition;  // When the rotor reaches this position, it triggers the next rotor to rotate
-        char ringPosition;   // Initial position of the rotor
+    public SimpleEnigmaMachine(String[] rotorSettings, char[] notches, char[] rings,
+                               String plugboard, String reflector) {
+        this.rotors = rotorSettings;
+        this.notchPositions = notches;
+        this.ringSettings = rings;
+        this.rotorPositions = new int[rotorSettings.length];
+        this.plugboardPairs = plugboard.toCharArray();
+        this.reflectorPairs = reflector.toCharArray();
 
-        public Rotor(String sequence, char notchPosition, char ringPosition) {
-            this.sequence = sequence;
-            this.notchPosition = notchPosition;
-            this.ringPosition = ringPosition;
-            // Set initial position
-            while (this.sequence.charAt(0) != this.ringPosition) {
-                rotate();
+        // Apply initial ring settings
+        applyRingSettings();
+    }
+
+    /**
+     * Creates an Enigma machine with default settings
+     */
+    public SimpleEnigmaMachine() {
+        // Default rotor settings
+        this.rotors = new String[]{
+                "EKMFLGDQVZNTOWYHXUSPAIBRCJ",  // Rotor I
+                "AJDKSIRUXBLHWTMCQGZNPYFVOE",  // Rotor II
+                "BDFHJLCPRTXVZNYEIWGAKMUSQO"   // Rotor III
+        };
+
+        // Default notch positions (Q, E, V for rotors I, II, III)
+        this.notchPositions = new char[]{'Q', 'E', 'V'};
+
+        // Default ring settings (A for all rotors)
+        this.ringSettings = new char[]{'A', 'A', 'A'};
+
+        this.rotorPositions = new int[3];
+
+        // Default plugboard and reflector pairs
+        this.plugboardPairs = "AZBYCXDWEVFU".toCharArray();
+        this.reflectorPairs = "AYBNCDEXFWGV".toCharArray();
+
+        // Apply initial ring settings
+        applyRingSettings();
+    }
+
+    /**
+     * Applies ring settings to rotor wirings
+     */
+    private void applyRingSettings() {
+        for (int i = 0; i < rotors.length; i++) {
+            int shift = ALPHABET.indexOf(ringSettings[i]);
+            if (shift > 0) {
+                // Shift rotor wiring according to ring setting
+                rotors[i] = rotors[i].substring(shift) + rotors[i].substring(0, shift);
+            }
+        }
+    }
+
+    /**
+     * Encrypts a single character through the Enigma machine
+     */
+    private char processChar(char c) {
+        // Step 1: Apply plugboard
+        c = applyPairs(c, plugboardPairs);
+
+        // Step 2: Rotate rotors
+        rotateRotors();
+
+        // Step 3: Pass through rotors forward
+        for (int i = 0; i < rotors.length; i++) {
+            int pos = ALPHABET.indexOf(c);
+            pos = (pos + rotorPositions[i]) % 26;
+            c = rotors[i].charAt(pos);
+        }
+
+        // Step 4: Apply reflector
+        c = applyPairs(c, reflectorPairs);
+
+        // Step 5: Pass through rotors backward
+        for (int i = rotors.length - 1; i >= 0; i--) {
+            int pos = rotors[i].indexOf(c);
+            pos = (pos - rotorPositions[i] + 26) % 26;
+            c = ALPHABET.charAt(pos);
+        }
+
+        // Step 6: Apply plugboard again
+        return applyPairs(c, plugboardPairs);
+    }
+
+    /**
+     * Applies character pair substitutions (used for both plugboard and reflector)
+     */
+    private char applyPairs(char c, char[] pairs) {
+        for (int i = 0; i < pairs.length; i += 2) {
+            if (c == pairs[i]) return pairs[i + 1];
+            if (c == pairs[i + 1]) return pairs[i];
+        }
+        return c;
+    }
+
+    /**
+     * Rotates the rotors considering notch positions
+     */
+    private void rotateRotors() {
+        // Check for notch positions and rotate accordingly
+        boolean[] shouldRotate = new boolean[rotors.length];
+        shouldRotate[0] = true; // Rightmost rotor always rotates
+
+        // Check middle rotor notch
+        if (ALPHABET.charAt(rotorPositions[1]) == notchPositions[1]) {
+            shouldRotate[1] = true;
+            shouldRotate[2] = true;
+        }
+
+        // Check right rotor notch
+        if (ALPHABET.charAt(rotorPositions[0]) == notchPositions[0]) {
+            shouldRotate[1] = true;
+        }
+
+        // Apply rotations
+        for (int i = 0; i < rotorPositions.length; i++) {
+            if (shouldRotate[i]) {
+                rotorPositions[i] = (rotorPositions[i] + 1) % 26;
+            }
+        }
+    }
+
+    /**
+     * Encrypts a message
+     */
+    public String encrypt(String message) {
+        return process(message);
+    }
+
+    /**
+     * Decrypts a message (same as encrypt due to Enigma's reciprocal nature)
+     */
+    public String decrypt(String message) {
+        // Due to the reciprocal nature of the Enigma machine,
+        // decryption is the same as encryption with the same settings
+        return process(message);
+    }
+
+    /**
+     * Processes a message (used for both encryption and decryption)
+     */
+    private String process(String message) {
+        StringBuilder result = new StringBuilder();
+
+        for (char c : message.toUpperCase().toCharArray()) {
+            if (Character.isLetter(c)) {
+                result.append(processChar(c));
+            } else {
+                result.append(c);
             }
         }
 
-        /**
-         * Rotates the rotor by one position
-         */
-        void rotate() {
-            // Move the last character to the front
-            sequence = sequence.substring(sequence.length() - 1) +
-                    sequence.substring(0, sequence.length() - 1);
-        }
-
-        /**
-         * Encrypts a character going forward through the rotor
-         */
-        char encrypt(char c) {
-            int position = ALPHABET.indexOf(c);
-            return sequence.charAt(position);
-        }
-
-        /**
-         * Encrypts a character going backward through the rotor
-         */
-        char encryptBackward(char c) {
-            int position = sequence.indexOf(c);
-            return ALPHABET.charAt(position);
-        }
-    }
-
-    /**
-     * Creates a new Enigma Machine with predefined settings.
-     * Initializes all components during construction.
-     */
-    public SimpleEnigmaMachine() {
-        initializeComponents();
-    }
-
-    /**
-     * Initializes all components of the Enigma Machine
-     */
-    private void initializeComponents() {
-        // Initialize the rotors with their sequences, notch positions, and initial positions
-        leftRotor = new Rotor("EKMFLGDQVZNTOWYHXUSPAIBRCJ", 'Q', 'E');
-        middleRotor = new Rotor("AJDKSIRUXBLHWTMCQGZNPYFVOE", 'E', 'A');
-        rightRotor = new Rotor("BDFHJLCPRTXVZNYEIWGAKMUSQO", 'V', 'B');
-
-        // Initialize the plugboard and reflector
-        plugboard = createPlugboard();
-        reflector = createReflector();
-    }
-
-    /**
-     * Helper method to connect pairs of letters in the plugboard
-     */
-    private void connectPlugs(Map<Character, Character> board, String... pairs) {
-        for (String pair : pairs) {
-            char first = pair.charAt(0);
-            char second = pair.charAt(1);
-            board.put(first, second);
-            board.put(second, first);
-        }
-    }
-
-    /**
-     * Creates the plugboard with predefined wire connections (10 wiring pairs)
-     */
-    private Map<Character, Character> createPlugboard() {
-        Map<Character, Character> board = new HashMap<>();
-        connectPlugs(board, "IR", "HQ", "NT", "WZ", "VC", "OY", "GP", "LF", "BX", "AK");
-        // Add remaining letters as self-mapping
-        connectPlugs(board, "DD", "EE", "JJ", "MM", "SS", "UU");
-        return board;
-    }
-
-    /**
-     * Creates the reflector with predefined connections
-     */
-    private Map<Character, Character> createReflector() {
-        Map<Character, Character> ref = new HashMap<>();
-        connectPlugs(ref, "LE", "YJ", "VC", "NI", "XW", "PB", "QM", "DR", "TA", "KZ", "GF", "UH", "OS");
-        return ref;
-    }
-
-    /**
-     * Encrypts a single character through the Enigma Machine
-     */
-    private char encryptChar(char c) {
-
-        // Step 1: Pass through plugboard
-        char result = plugboard.get(c);
-
-        // Step 2: Rotate the rotors
-        rotateRotors();
-
-        // Step 3: Pass through rotors (forward)
-        result = rightRotor.encrypt(result);
-        result = middleRotor.encrypt(result);
-        result = leftRotor.encrypt(result);
-
-        // Step 4: Pass through reflector
-        result = reflector.get(result);
-
-        // Step 5: Pass through rotors (backward)
-        result = leftRotor.encryptBackward(result);
-        result = middleRotor.encryptBackward(result);
-        result = rightRotor.encryptBackward(result);
-
-        // Step 6: Pass through plugboard again
-        return plugboard.get(result);
-    }
-
-    /**
-     * Handles the rotation of all rotors
-     */
-    private void rotateRotors() {
-        // Always rotate the left rotor first
-        leftRotor.rotate();
-
-        // Check if middle rotor should rotate
-        if (leftRotor.sequence.charAt(0) == leftRotor.notchPosition) {
-            middleRotor.rotate();
-
-        }
-
-        // Check if right rotor should rotate
-        if (middleRotor.sequence.charAt(0) == middleRotor.notchPosition) {
-            rightRotor.rotate();
-        }
-    }
-
-    /**
-     * Encrypts a message using the Enigma Machine
-     */
-    public String encrypt(String message) {
-        StringBuilder result = new StringBuilder();
-        for (char c : message.toUpperCase().toCharArray()) {
-            result.append(encryptChar(c));
-        }
         return result.toString();
     }
 
     /**
-     * Example usage of the Enigma Machine
+     * Sets the initial position of the rotors
+     */
+    public void setRotorPositions(int... positions) {
+        if (positions.length != rotorPositions.length) {
+            throw new IllegalArgumentException("Must provide position for each rotor");
+        }
+        System.arraycopy(positions, 0, rotorPositions, 0, positions.length);
+    }
+
+    /**
+     * Example usage demonstrating encryption and decryption
      */
     public static void main(String[] args) {
+
+        // Create machine with default settings
         SimpleEnigmaMachine enigma = new SimpleEnigmaMachine();
 
-        String message = "SUBMARINE";
+        // Example with default settings
+        String message = "IN THE HEART THE FOREST THERE WAS AN HIDDEN VILLAGE SYSTEMATICALLY WHERE PEOPLE LIVED "+
+                "IN PERFECT HARMONY EVERY MORNING THE SUN WOULD RISE OVER THE TALL TREES CASTING AN WARM GLOW OVER " +
+                "THE LAND THE CHILDREN WOULD RUN OUT TO PLAY IN THE MEADOWS WHILE THE ADULTS TENDED TO THEIR TASKS " +
+                "THERE WAS ALWAYS SENSE OF PEACE AND CONTENTMENT";
+
+        // Encrypt
+        enigma.setRotorPositions(0, 0, 0);
         String encrypted = enigma.encrypt(message);
 
-        System.out.println("Original message: " + message);
-        System.out.println("Encrypted message: " + encrypted);
+        // Decrypt (reset positions first!)
+        enigma.setRotorPositions(0, 0, 0);
+        String decrypted = enigma.decrypt(encrypted);
+
+        System.out.println("Original: " + message);
+        System.out.println("Encrypted: " + encrypted);
+        System.out.println("Decrypted: " + decrypted);
+
     }
 }
