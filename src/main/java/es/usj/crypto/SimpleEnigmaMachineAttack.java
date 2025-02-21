@@ -4,22 +4,31 @@ import java.util.*;
 
 /**
  * Educational implementation of cryptanalysis techniques for the Enigma Machine.
- * Includes statistical analysis methods, hill climbing, and exhaustive search for testing rotor combinations.
+ * This class includes statistical analysis, hill climbing, and exhaustive search to test rotor configurations.
+ * <p>
+ * The cryptanalysis techniques used:
+ * - Index of Coincidence (IoC): Measures letter repetition probability.
+ * - Frequency Analysis: Compares letter frequencies to English language norms.
+ * - Common Trigram Search: Detects common three-letter sequences in decrypted text.
+ * - Hill Climbing: Iteratively refines rotor settings for better decryption.
+ * - Exhaustive Search: Brute-force approach to find the best possible rotor configuration.
+ * </p>
  */
 public class SimpleEnigmaMachineAttack {
-    // English letter frequencies (percentage) from A to Z
+
+    // English letter frequencies (A-Z) in percentage
     private static final double[] ENGLISH_FREQUENCIES = {
             8.2, 1.5, 2.8, 4.3, 13, 2.2, 2.0, 6.1, 7.0, 0.15,
             0.77, 4.0, 2.4, 6.7, 7.5, 1.9, 0.095, 6.0, 6.3, 9.1,
             2.8, 0.98, 2.4, 0.15, 2.0, 0.074
     };
 
-    // Common English trigrams for analysis
+    // Common English trigrams (three-letter sequences frequently appearing in text)
     private static final String[] COMMON_TRIGRAMS = {
             "THE", "AND", "ING", "ENT", "ION", "HER", "FOR", "THA", "NTH", "INT"
     };
 
-    // Historical Enigma rotor wirings (I through V)
+    // Historical Enigma rotor wirings (Rotors I-V)
     public static final String[] ROTOR_WIRINGS = {
             "EKMFLGDQVZNTOWYHXUSPAIBRCJ",  // Rotor I
             "AJDKSIRUXBLHWTMCQGZNPYFVOE",  // Rotor II
@@ -28,7 +37,7 @@ public class SimpleEnigmaMachineAttack {
             "VZBRGITYUPSDNHLXAWMJQOFECK"   // Rotor V
     };
 
-    // Historical notch positions for each of the above rotors
+    // Historical notch positions for each rotor, which determine when the next rotor advances
     public static final char[] NOTCH_POSITIONS = {'Q', 'E', 'V', 'J', 'Z'};
 
     /**
@@ -42,6 +51,9 @@ public class SimpleEnigmaMachineAttack {
         char middlePosition;
         char rightPosition;
 
+        /**
+         * Creates an Enigma machine configuration with specified rotors and positions.
+         */
         public EnigmaConfig(int left, int middle, int right,
                             char leftPos, char middlePos, char rightPos) {
             this.leftRotor = left;
@@ -72,7 +84,7 @@ public class SimpleEnigmaMachineAttack {
                     rotors,
                     notches,
                     rings,
-                    "AZBYCXDWEVFU",  // Default plugboard
+                    "AZBYCXDWEVFU",      // Default plugboard
                     "YRUHQSLDPXNGOKMIEBFZCWVJAT"   // Reflector B
             );
 
@@ -85,6 +97,9 @@ public class SimpleEnigmaMachineAttack {
             return enigma;
         }
 
+        /**
+         * Mutates a configuration to explore new possibilities for breaking the encryption.
+         */
         public EnigmaConfig mutate() {
             Random rand = new Random();
             EnigmaConfig newConfig = new EnigmaConfig(
@@ -319,11 +334,26 @@ public class SimpleEnigmaMachineAttack {
     }
 
     /**
-     * Performs an exhaustive search through all possible rotor combinations.
+     * Performs an exhaustive search through all possible rotor and position combinations
+     * to find the best Enigma machine configuration that maximizes plaintext fitness.
+     *
+     * <p>The method iterates through all unique rotor orderings and their initial positions,
+     * decrypting the given ciphertext with each configuration. It evaluates each decryption
+     * using a fitness function and returns the configuration that produces the highest score.
+     *
+     * <p><b>Note:</b> This method performs a brute-force search and may take considerable
+     * time depending on the input size.
+     *
+     * @param ciphertext The encrypted text to be deciphered.
+     * @return The {@link EnigmaConfig} with the highest-scoring plaintext.
      */
     public static EnigmaConfig exhaustiveSearch(String ciphertext) {
         double bestScore = -Double.MAX_VALUE;
         EnigmaConfig bestConfig = null;
+        int totalConfigurations = ROTOR_WIRINGS.length * (ROTOR_WIRINGS.length - 1) * (ROTOR_WIRINGS.length - 2) * 26 * 26 * 26;
+        int checkedConfigurations = 0;
+
+        System.out.println("Starting exhaustive search. Total configurations to check: " + totalConfigurations);
 
         for (int left = 0; left < ROTOR_WIRINGS.length; left++) {
             for (int middle = 0; middle < ROTOR_WIRINGS.length; middle++) {
@@ -335,6 +365,12 @@ public class SimpleEnigmaMachineAttack {
                     for (char leftPos = 'A'; leftPos <= 'Z'; leftPos++) {
                         for (char middlePos = 'A'; middlePos <= 'Z'; middlePos++) {
                             for (char rightPos = 'A'; rightPos <= 'Z'; rightPos++) {
+                                checkedConfigurations++;
+
+                                if (checkedConfigurations % 100000 == 0) {
+                                    System.out.println("Checked " + checkedConfigurations + " / " + totalConfigurations + " configurations...");
+                                }
+
                                 EnigmaConfig config = new EnigmaConfig(
                                         left, middle, right,
                                         leftPos, middlePos, rightPos
@@ -346,6 +382,8 @@ public class SimpleEnigmaMachineAttack {
                                 if (score > bestScore) {
                                     bestScore = score;
                                     bestConfig = config;
+
+                                    System.out.println("New best configuration found: " + config + " with score " + bestScore);
                                 }
                             }
                         }
@@ -353,6 +391,8 @@ public class SimpleEnigmaMachineAttack {
                 }
             }
         }
+
+        System.out.println("Exhaustive search completed. Best configuration: " + bestConfig);
         return bestConfig;
     }
 
