@@ -9,8 +9,8 @@ The project now consists of two main components:
 ## Overview
 
 This educational project demonstrates:
-- **Rotor-based encryption** that mimics the Enigma machine's letter substitution process.
-- **Plugboard swapping** to add an additional layer of encryption.
+- **Rotor-based encryption** that mimics the Enigma machine's letter substitution and rotation process.
+- **Plugboard swapping** to add a layer of encryption.
 - **Reflector-based signal bouncing** to ensure the reversibility of encryption and decryption.
 - **Automated cryptanalysis** techniques such as **frequency analysis**, **index of coincidence**, **hill climbing**, and **exhaustive search** to break encrypted messages.
 

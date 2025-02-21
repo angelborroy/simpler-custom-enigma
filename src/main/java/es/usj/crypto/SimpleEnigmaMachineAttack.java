@@ -73,7 +73,7 @@ public class SimpleEnigmaMachineAttack {
                     notches,
                     rings,
                     "AZBYCXDWEVFU",  // Default plugboard
-                    "AYBNCDEXFWGV"   // Default reflector
+                    "YRUHQSLDPXNGOKMIEBFZCWVJAT"   // Reflector B
             );
 
             enigma.setRotorPositions(
@@ -362,10 +362,10 @@ public class SimpleEnigmaMachineAttack {
     public static void main(String[] args) {
 
         // Example ciphertext
-        String ciphertext = "IN TQD HEAST TTE FORMSK TEERE RGS AA FIKUVN VILBASI SCSKEMETIOJXFY WBERV PEBPLL LICEN IN " +
-                "IEICOCM HAOMHGY REOBS QWFNIXG THE SUN WOFLD XISE SVBR DHE TAGE CRRXS CSSTVJX JN AARM NQOW OUHN UHE TAXE " +
-                "NHE IDOLDREN WAVLD NUN KUN TO PUAY XN CHR MAUDOWS WHILF FHQ WJULGU CENDED TE THEZN VAQKS YHZRK WAH " +
-                "WLUAWS SENNC OF AMAIL AND CONTEBTMKNI";
+        String ciphertext = "ZQ HDG TRIXV EZI HAZTFR AATXP EOM DC UOOZAE PXTOUTT NIMMZQXRVBSVPH HZWOZ MXHCIN VSPIW CW " +
+                "JXBEGHV YCKTABE YLLCI ORXDTDR ROK YOV MCGXT OAWV REGZ VOB WEUU QEDFO EPIZWOY EP BUES UREP XMTM ROL SYHQ ZZL " +
+                "QYSCKKZW DHHSZ UAG XMB PS GXGA AT AVV HPIPEAP ZJGOP GOC TGEYWX NTKWXM ZL JUYUX XNUIZ KUMKN YGK DVKIIA " +
+                "FVXVX QY NQZQZ FFQ ZFTOCGENFIS";
         ciphertext = ciphertext.replace(" ", "");
 
         System.out.println("Starting cryptanalysis...\n");
