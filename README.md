@@ -177,21 +177,22 @@ git clone https://github.com/angelborroy/simpler-custom-enigma.git
 cd simpler-custom-enigma
 ```
 
-2. Build with Maven:
+2. Build with Javac:
 ```bash
-mvn clean package
+cd src/main/java
+javac es/usj/crypto/SimpleEnigmaMachine.java es/usj/crypto/SimpleEnigmaMachineAttack.java
 ```
 
 ### Running Examples
 
-The project includes example usage in both main classes. To run them:
+The project includes example usage in both main classes. To run them, after building with `javac` and from folder `src/main/java`:
 
 ```bash
 # Run Enigma Machine example
-java -cp target/classes es.usj.crypto.SimpleEnigmaMachine
+java es.usj.crypto.SimpleEnigmaMachine
 
 # Run Cryptanalysis example
-java -cp target/classes es.usj.crypto.SimpleEnigmaMachineAttack
+java es.usj.crypto.SimpleEnigmaMachineAttack
 ```
 
 ### Using in Your Own Code
