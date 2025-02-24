@@ -19,6 +19,7 @@ public class SimpleEnigmaMachine {
 
     // Rotors and settings
     private String[] rotors; // Each rotor contains a scrambled version of the alphabet
+    private String[] originalRotors; // Store original rotor wirings
     private char[] notchPositions; // Notch positions determine rotor advancement
     private char[] ringSettings; // Initial ring settings for each rotor
     private int[] rotorPositions; // Current positions of the rotors
@@ -49,18 +50,21 @@ public class SimpleEnigmaMachine {
      */
     public SimpleEnigmaMachine(String[] rotorSettings, char[] notches, char[] rings,
                                String plugboard, String reflector) {
-        this.rotors = rotorSettings;
+        this.originalRotors = Arrays.copyOf(rotorSettings, rotorSettings.length);
+        this.rotors = new String[rotorSettings.length];
+        for (int i = 0; i < rotorSettings.length; i++) {
+            this.rotors[i] = rotorSettings[i];
+        }
         this.notchPositions = notches;
         this.ringSettings = rings;
-        this.rotorPositions = new int[]{
-                this.rotors[0].indexOf(this.ringSettings[0]),
-                this.rotors[1].indexOf(this.ringSettings[1]),
-                this.rotors[2].indexOf(this.ringSettings[2])
-        };
+        this.rotorPositions = new int[rotors.length];
+        for (int i = 0; i < rotors.length; i++) {
+            this.rotorPositions[i] = 0; // Start at 0 position
+        }
         this.plugboardPairs = plugboard.toCharArray();
         this.reflectorPairs = reflector.toCharArray();
 
-        // Apply initial ring settings to adjust rotor wirings.
+        // Apply initial ring settings to adjust rotor wirings
         applyRingSettings();
     }
 
@@ -113,8 +117,10 @@ public class SimpleEnigmaMachine {
      */
     private char applyPairs(char c, char[] pairs) {
         for (int i = 0; i < pairs.length; i += 2) {
-            if (c == pairs[i]) return pairs[i + 1];
-            if (c == pairs[i + 1]) return pairs[i];
+            if (i + 1 < pairs.length) {
+                if (c == pairs[i]) return pairs[i + 1];
+                if (c == pairs[i + 1]) return pairs[i];
+            }
         }
         return c;
     }
@@ -125,16 +131,19 @@ public class SimpleEnigmaMachine {
      */
     private void rotateRotors() {
         boolean[] shouldRotate = new boolean[rotors.length];
-        shouldRotate[0] = true;
+        shouldRotate[2] = true; // Rightmost rotor always rotates
 
+        // Check for notches
         if (ALPHABET.charAt(rotorPositions[1]) == notchPositions[1]) {
-            shouldRotate[1] = true;
-            shouldRotate[2] = true;
-        }
-        if (ALPHABET.charAt(rotorPositions[0]) == notchPositions[0]) {
+            shouldRotate[0] = true; // Double-stepping mechanism
             shouldRotate[1] = true;
         }
 
+        if (ALPHABET.charAt(rotorPositions[2]) == notchPositions[2]) {
+            shouldRotate[1] = true; // Middle rotor advances when right rotor hits notch
+        }
+
+        // Apply rotations
         for (int i = 0; i < rotorPositions.length; i++) {
             if (shouldRotate[i]) {
                 rotorPositions[i] = (rotorPositions[i] + 1) % 26;
@@ -171,8 +180,28 @@ public class SimpleEnigmaMachine {
     /**
      * Sets the initial position of the rotors before encryption/decryption.
      */
-    public void setRotorPositions(int... positions) {
-        System.arraycopy(positions, 0, rotorPositions, 0, positions.length);
+    public void setRotorPositions(char[] positions) {
+        for (int i = 0; i < positions.length && i < rotorPositions.length; i++) {
+            rotorPositions[i] = ALPHABET.indexOf(positions[i]);
+        }
+    }
+
+    /**
+     * Resets the machine to its initial state.
+     */
+    public void reset() {
+        // Reset rotor positions
+        for (int i = 0; i < rotorPositions.length; i++) {
+            rotorPositions[i] = 0;
+        }
+
+        // Reset rotor wirings from original
+        for (int i = 0; i < rotors.length; i++) {
+            rotors[i] = originalRotors[i];
+        }
+
+        // Reapply ring settings
+        applyRingSettings();
     }
 
     /**
@@ -189,12 +218,18 @@ public class SimpleEnigmaMachine {
         char[] notches = new char[]{'V', 'Z', 'E'};
 
         // Initial position of each Rotor
+        char[] rotorStartPositions = new char[]{'A', 'A', 'A'};
+
+        // Ring settings
         char[] rings = new char[]{'U', 'S', 'A'};
 
         SimpleEnigmaMachine enigma = new SimpleEnigmaMachine(rotors, notches, rings,
-                "AZBYCXDWEVFU",      // Default plugboard
+                "AZBYCXDWEVFU",      // Plugboard
                 "YRUHQSLDPXNGOKMIEBFZCWVJAT"   // Reflector B
         );
+
+        // Set initial rotor positions
+        enigma.setRotorPositions(rotorStartPositions);
 
         // Plaintext should be long enough to apply cryptanalysis techniques
         String message = "IN THE HEART THE FOREST THERE WAS AN HIDDEN VILLAGE SYSTEMATICALLY WHERE PEOPLE LIVED "+
@@ -205,11 +240,10 @@ public class SimpleEnigmaMachine {
         // Encrypt
         String encrypted = enigma.encrypt(message);
 
-        // Before decrypting set the Enigma machine to initial positions
-        enigma = new SimpleEnigmaMachine(rotors, notches, rings,
-                "AZBYCXDWEVFU",      // Default plugboard
-                "YRUHQSLDPXNGOKMIEBFZCWVJAT"   // Reflector B
-        );
+        // Reset the enigma machine to initial state for decryption
+        enigma.reset();
+        enigma.setRotorPositions(rotorStartPositions);
+
         // Decrypt
         String decrypted = enigma.decrypt(encrypted);
 
@@ -217,6 +251,7 @@ public class SimpleEnigmaMachine {
         System.out.println("Encrypted: " + encrypted);
         System.out.println("Decrypted: " + decrypted);
 
+        // Verify
+        System.out.println("Decryption successful: " + message.equals(decrypted));
     }
-
 }
