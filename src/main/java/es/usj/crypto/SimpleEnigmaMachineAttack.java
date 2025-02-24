@@ -4,31 +4,24 @@ import java.util.*;
 
 /**
  * Educational implementation of cryptanalysis techniques for the Enigma Machine.
- * This class includes statistical analysis, hill climbing, and exhaustive search to test rotor configurations.
- * <p>
- * The cryptanalysis techniques used:
- * - Index of Coincidence (IoC): Measures letter repetition probability.
- * - Frequency Analysis: Compares letter frequencies to English language norms.
- * - Common Trigram Search: Detects common three-letter sequences in decrypted text.
- * - Hill Climbing: Iteratively refines rotor settings for better decryption.
- * - Exhaustive Search: Brute-force approach to find the best possible rotor configuration.
- * </p>
+ * This class includes statistical analysis, hill climbing, and an exhaustive search
+ * to test rotor configurations.
  */
 public class SimpleEnigmaMachineAttack {
 
     // English letter frequencies (A-Z) in percentage
     private static final double[] ENGLISH_FREQUENCIES = {
-            8.2, 1.5, 2.8, 4.3, 13, 2.2, 2.0, 6.1, 7.0, 0.15,
+            8.2, 1.5, 2.8, 4.3, 13.0, 2.2, 2.0, 6.1, 7.0, 0.15,
             0.77, 4.0, 2.4, 6.7, 7.5, 1.9, 0.095, 6.0, 6.3, 9.1,
             2.8, 0.98, 2.4, 0.15, 2.0, 0.074
     };
 
-    // Common English trigrams (three-letter sequences frequently appearing in text)
+    // Common English trigrams
     private static final String[] COMMON_TRIGRAMS = {
             "THE", "AND", "ING", "ENT", "ION", "HER", "FOR", "THA", "NTH", "INT"
     };
 
-    // Historical Enigma rotor wirings (Rotors I-V)
+    // Historical Enigma rotor wirings (I-V)
     public static final String[] ROTOR_WIRINGS = {
             "EKMFLGDQVZNTOWYHXUSPAIBRCJ",  // Rotor I
             "AJDKSIRUXBLHWTMCQGZNPYFVOE",  // Rotor II
@@ -37,35 +30,34 @@ public class SimpleEnigmaMachineAttack {
             "VZBRGITYUPSDNHLXAWMJQOFECK"   // Rotor V
     };
 
-    // Historical notch positions for each rotor, which determine when the next rotor advances
+    // Historical notch positions for each rotor
     public static final char[] NOTCH_POSITIONS = {'Q', 'E', 'V', 'J', 'Z'};
 
     /**
      * Represents a potential Enigma machine configuration.
+     * <p/>
+     * NOTE: In a real Enigma, “ring settings” (Ringstellung) and
+     * “rotor start positions” (Grundstellung) are separate.
      */
     static class EnigmaConfig {
-        int leftRotor;
-        int middleRotor;
-        int rightRotor;
-        char leftRingPosition;
-        char middleRingPosition;
-        char rightRingPosition;
+        int leftRotor, middleRotor, rightRotor;
+        char leftStart, middleStart, rightStart;      // rotor start positions
 
         /**
-         * Creates an Enigma machine configuration with specified rotors and positions.
+         * Constructor with explicit ring and start positions.
          */
         public EnigmaConfig(int left, int middle, int right,
-                            char leftPos, char middlePos, char rightPos) {
+                            char leftStart, char middleStart, char rightStart) {
             this.leftRotor = left;
             this.middleRotor = middle;
             this.rightRotor = right;
-            this.leftRingPosition = leftPos;
-            this.middleRingPosition = middlePos;
-            this.rightRingPosition = rightPos;
+            this.leftStart = leftStart;
+            this.middleStart = middleStart;
+            this.rightStart = rightStart;
         }
 
         /**
-         * Creates a SimpleEnigmaMachine with this configuration
+         * Creates a SimpleEnigmaMachine with this configuration (rotor wirings, start positions)
          */
         public SimpleEnigmaMachine createEnigma() {
             String[] rotors = {
@@ -78,304 +70,222 @@ public class SimpleEnigmaMachineAttack {
                     NOTCH_POSITIONS[middleRotor],
                     NOTCH_POSITIONS[rightRotor]
             };
-            char[] rings = {
-                    leftRingPosition,
-                    middleRingPosition,
-                    rightRingPosition
-            };
 
             return new SimpleEnigmaMachine(
                     rotors,
                     notches,
-                    rings,
-                    "AZBYCXDWEVFU",      // Default plugboard
-                    "YRUHQSLDPXNGOKMIEBFZCWVJAT"   // Reflector B
+                    new char[]{leftStart, middleStart, rightStart},
+                    "AZBYCXDWEVFU",
+                    "YRUHQSLDPXNGOKMIEBFZCWVJAT"
             );
 
         }
-
-        /**
-         * Mutates a configuration to explore new possibilities for breaking the encryption.
-         */
-        public EnigmaConfig mutate() {
-            Random rand = new Random();
-            EnigmaConfig newConfig = new EnigmaConfig(
-                    leftRotor, middleRotor, rightRotor,
-                    leftRingPosition, middleRingPosition, rightRingPosition
-            );
-
-            switch (rand.nextInt(6)) {
-                case 0 -> {
-                    // Select a unique left rotor
-                    int newLeftRotor;
-                    do {
-                        newLeftRotor = rand.nextInt(ROTOR_WIRINGS.length);
-                    } while (newLeftRotor == middleRotor || newLeftRotor == rightRotor);
-                    newConfig.leftRotor = newLeftRotor;
-                }
-                case 1 -> {
-                    // Select a unique middle rotor
-                    int newMiddleRotor;
-                    do {
-                        newMiddleRotor = rand.nextInt(ROTOR_WIRINGS.length);
-                    } while (newMiddleRotor == leftRotor || newMiddleRotor == rightRotor);
-                    newConfig.middleRotor = newMiddleRotor;
-                }
-                case 2 -> {
-                    // Select a unique right rotor
-                    int newRightRotor;
-                    do {
-                        newRightRotor = rand.nextInt(ROTOR_WIRINGS.length);
-                    } while (newRightRotor == leftRotor || newRightRotor == middleRotor);
-                    newConfig.rightRotor = newRightRotor;
-                }
-                case 3 -> newConfig.leftRingPosition = (char) ('A' + rand.nextInt(26));
-                case 4 -> newConfig.middleRingPosition = (char) ('A' + rand.nextInt(26));
-                case 5 -> newConfig.rightRingPosition = (char) ('A' + rand.nextInt(26));
-            }
-
-            return newConfig;
-        }
-
 
         @Override
         public String toString() {
-            return String.format("Rotors: %d-%d-%d, Positions: %c-%c-%c",
+            return String.format("Rotors: [%d-%d-%d], StartPos: [%c-%c-%c]",
                     leftRotor + 1, middleRotor + 1, rightRotor + 1,
-                    leftRingPosition, middleRingPosition, rightRingPosition);
+                    leftStart, middleStart, rightStart);
         }
     }
 
-
     /**
-     * Calculates the Index of Coincidence (IoC) for a given text.
-     * Measures the probability that two randomly selected letters from the text are the same.
-     *
-     * @param text The text to analyze.
-     * @return The Index of Coincidence.
+     * Calculate Index of Coincidence.
      */
     public static double calculateIoC(String text) {
         text = text.toUpperCase();
-        int[] frequencies = new int[26];
+        int[] freq = new int[26];
         int totalChars = 0;
 
-        // Count frequencies
         for (char c : text.toCharArray()) {
-            if (Character.isLetter(c)) {
-                frequencies[c - 'A']++;
+            if (c >= 'A' && c <= 'Z') {
+                freq[c - 'A']++;
                 totalChars++;
             }
         }
 
-        // Compute IoC
-        double sum = 0.0;
-        for (int freq : frequencies) {
-            sum += freq * (freq - 1);
+        double sum = 0;
+        for (int f : freq) {
+            sum += f * (f - 1);
         }
-        return totalChars > 1 ? sum / (totalChars * (totalChars - 1)) : 0;
+        return (totalChars > 1) ? sum / (totalChars * (totalChars - 1)) : 0.0;
     }
 
     /**
-     * Analyzes letter frequencies and compares them to expected English frequencies.
-     * Returns a chi-square statistic (lower is better, indicating closer match to English).
-     *
-     * @param text The text to analyze.
-     * @return Chi-square statistic.
+     * Calculate how well letter frequencies match typical English frequencies (chi-square).
+     * Lower chi-square means a closer match to English.
      */
     public static double calculateFrequencyScore(String text) {
         text = text.toUpperCase();
-        int[] frequencies = new int[26];
+        int[] freq = new int[26];
         int totalChars = 0;
 
-        // Count frequencies
         for (char c : text.toCharArray()) {
-            if (Character.isLetter(c)) {
-                frequencies[c - 'A']++;
+            if (c >= 'A' && c <= 'Z') {
+                freq[c - 'A']++;
                 totalChars++;
             }
         }
 
-        // Calculate chi-square
-        double chiSquare = 0;
+        if (totalChars == 0) return Double.MAX_VALUE;
+
+        double chiSq = 0.0;
         for (int i = 0; i < 26; i++) {
-            if (totalChars == 0) {
-                break;
-            }
-            double observed = frequencies[i] / (double) totalChars * 100;
+            double observed = (freq[i] * 100.0) / totalChars;
             double expected = ENGLISH_FREQUENCIES[i];
-            chiSquare += Math.pow(observed - expected, 2) / expected;
+            chiSq += Math.pow(observed - expected, 2) / (expected + 0.000001);
         }
-        return chiSquare;
+        return chiSq;
     }
 
     /**
-     * Counts occurrences of common English trigrams in the text.
-     *
-     * @param text The text to analyze.
-     * @return Number of occurrences of common trigrams.
+     * Count occurrences of known common English trigrams.
      */
     public static int countCommonTrigrams(String text) {
         text = text.toUpperCase();
         int count = 0;
-
         for (String trigram : COMMON_TRIGRAMS) {
-            int index = 0;
-            while ((index = text.indexOf(trigram, index)) != -1) {
+            int idx = 0;
+            while ((idx = text.indexOf(trigram, idx)) != -1) {
                 count++;
-                index++;
+                idx++;
             }
         }
         return count;
     }
 
     /**
-     * Calculates an overall fitness score for potential plaintext.
-     * Combines IoC, frequency analysis, and trigram hits.
-     *
-     * @param text The candidate plaintext.
-     * @return A combined fitness score (higher is better).
+     * Combine IoC, frequency analysis, and trigram count into a single fitness value (higher = better).
      */
     public static double calculatePlaintextFitness(String text) {
-        double iocScore = calculateIoC(text);
+        // Index of Coincidence
+        double ioc = calculateIoC(text);           // typical ~ 0.0667 for English
+        double iocFitness = 1.0 - Math.abs(0.067 - ioc);
+
+        // Frequency score (lower is better) => invert
         double freqScore = calculateFrequencyScore(text);
-        int trigramCount = countCommonTrigrams(text);
-
-        // Normalize and combine
-        // IoC for standard English is ~0.067; let's see how close we are
-        double iocFitness = 1.0 - Math.abs(0.067 - iocScore);
-        // Lower chi-square is better, so use an inverse scale
         double freqFitness = 1.0 / (1.0 + freqScore);
-        // Basic measure for common trigram frequency
-        double trigramFitness = text.isEmpty() ? 0 : (trigramCount / (double) text.length());
 
-        // Weighted combination of these three metrics
-        // Adjust weights as desired.
-        return (0.4 * iocFitness) + (0.4 * freqFitness) + (0.2 * trigramFitness);
+        // Common trigram hits
+        int trigramCount = countCommonTrigrams(text);
+        // trivially scaled by length to avoid punishing short texts
+        double trigramFitness = (text.length() > 0) ? (trigramCount / (double) text.length()) : 0;
+
+        // Weighted combination
+        return 0.4 * iocFitness + 0.4 * freqFitness + 0.2 * trigramFitness;
     }
 
     /**
-     * Performs a hill-climbing attack to find a good Enigma configuration.
+     * Simple hill climb method that mutates ring or rotor selections,
+     * but does NOT separately handle rotor start positions in this example.
+     * You can adapt this if you want to hill-climb the start positions as well.
      */
     public static EnigmaConfig hillClimb(String ciphertext, int maxIterations) {
         Random rand = new Random();
+        List<Integer> rotorList = new ArrayList<>(Arrays.asList(0, 1, 2, 3, 4));
+        Collections.shuffle(rotorList, rand);
 
-        // Create a list of rotor indices and shuffle it
-        List<Integer> rotorIndices = new ArrayList<>();
-        for (int i = 0; i < ROTOR_WIRINGS.length; i++) {
-            rotorIndices.add(i);
-        }
-        Collections.shuffle(rotorIndices, rand);
-
-        // Start from a random configuration
-        EnigmaConfig bestConfig = new EnigmaConfig(
-                rotorIndices.get(0),
-                rotorIndices.get(1),
-                rotorIndices.get(2),
-                (char)('A' + rand.nextInt(26)),
-                (char)('A' + rand.nextInt(26)),
-                (char)('A' + rand.nextInt(26))
-        );
-
-        // Initialize machine and get initial decryption
+        EnigmaConfig bestConfig = new EnigmaConfig(rotorList.get(0), rotorList.get(1), rotorList.get(2), 'A', 'A', 'A');
         SimpleEnigmaMachine enigma = bestConfig.createEnigma();
+
         String bestDecryption = enigma.decrypt(ciphertext);
         double bestScore = calculatePlaintextFitness(bestDecryption);
 
-        System.out.printf("Initial configuration: %s%n", bestConfig);
-
-        int iterationsWithoutImprovement = 0;
-
         for (int i = 0; i < maxIterations; i++) {
-            EnigmaConfig neighbor = bestConfig.mutate();
+            EnigmaConfig neighbor = mutateConfig(bestConfig);
             enigma = neighbor.createEnigma();
 
-            String decryption = enigma.decrypt(ciphertext);
-            double score = calculatePlaintextFitness(decryption);
+            String dec = enigma.decrypt(ciphertext);
+            double score = calculatePlaintextFitness(dec);
 
             if (score > bestScore) {
                 bestConfig = neighbor;
                 bestScore = score;
-                bestDecryption = decryption;
-                iterationsWithoutImprovement = 0;
-
-                System.out.printf("Iteration %d: New best configuration found%n", i);
-            } else {
-                iterationsWithoutImprovement++;
-
-                Collections.shuffle(rotorIndices, rand);
-
-                if (iterationsWithoutImprovement > 100) {
-                    bestConfig = new EnigmaConfig(
-                            rotorIndices.get(0),
-                            rotorIndices.get(1),
-                            rotorIndices.get(2),
-                            (char)('A' + rand.nextInt(26)),
-                            (char)('A' + rand.nextInt(26)),
-                            (char)('A' + rand.nextInt(26))
-                    );
-                    enigma = bestConfig.createEnigma();
-                    bestDecryption = enigma.decrypt(ciphertext);
-                    bestScore = calculatePlaintextFitness(bestDecryption);
-                    iterationsWithoutImprovement = 0;
-
-                    System.out.println("Restarting search with a new random configuration...\n");
-                }
+                System.out.printf("Iteration %d: New best config => %.4f%n", i, score);
             }
         }
         return bestConfig;
     }
 
     /**
-     * Performs an exhaustive search through all possible rotor and position combinations
-     * to find the best Enigma machine configuration that maximizes plaintext fitness.
+     * A simple mutation for demonstration — randomly change one field.
+     */
+    private static EnigmaConfig mutateConfig(EnigmaConfig config) {
+        Random rand = new Random();
+        int mutationType = rand.nextInt(4);
+        int newRotor;
+
+        switch (mutationType) {
+            case 0:
+                do { newRotor = rand.nextInt(5); } while (newRotor == config.leftRotor);
+                return new EnigmaConfig(newRotor, config.middleRotor, config.rightRotor, config.leftStart, config.middleStart, config.rightStart);
+            case 1:
+                do { newRotor = rand.nextInt(5); } while (newRotor == config.middleRotor);
+                return new EnigmaConfig(config.leftRotor, newRotor, config.rightRotor, config.leftStart, config.middleStart, config.rightStart);
+            case 2:
+                do { newRotor = rand.nextInt(5); } while (newRotor == config.rightRotor);
+                return new EnigmaConfig(config.leftRotor, config.middleRotor, newRotor, config.leftStart, config.middleStart, config.rightStart);
+            case 3:
+                return new EnigmaConfig(config.leftRotor, config.middleRotor, config.rightRotor,
+                        (char) ('A' + rand.nextInt(26)),
+                        (char) ('A' + rand.nextInt(26)),
+                        (char) ('A' + rand.nextInt(26)));
+            default:
+                return config;
+        }
+    }
+
+    /**
+     * Performs an exhaustive search to determine the best Enigma configuration
+     * that maximizes the plaintext fitness score.
      *
-     * <p>The method iterates through all unique rotor orderings and their initial positions,
-     * decrypting the given ciphertext with each configuration. It evaluates each decryption
-     * using a fitness function and returns the configuration that produces the highest score.
+     * - Tests all permutations of three rotors out of five.
+     * - For each permutation, tests all 26^3 rotor start positions (AAA - ZZZ).
+     * - Uses a fitness function to determine the most likely correct decryption.
      *
-     * <p><b>Note:</b> This method performs a brute-force search and may take considerable
-     * time depending on the input size.
-     *
-     * @param ciphertext The encrypted text to be deciphered.
-     * @return The {@link EnigmaConfig} with the highest-scoring plaintext.
+     * @param ciphertext The encrypted message to decrypt.
+     * @return The best Enigma configuration found.
      */
     public static EnigmaConfig exhaustiveSearch(String ciphertext) {
         double bestScore = -Double.MAX_VALUE;
         EnigmaConfig bestConfig = null;
-        int totalConfigurations = ROTOR_WIRINGS.length * (ROTOR_WIRINGS.length - 1) * (ROTOR_WIRINGS.length - 2) * 26 * 26 * 26;
-        int checkedConfigurations = 0;
 
-        System.out.println("Starting exhaustive search. Total configurations to check: " + totalConfigurations);
+        int rotorCount = ROTOR_WIRINGS.length;
+        long totalCombinations = (rotorCount * (rotorCount - 1) * (rotorCount - 2)) * 26L * 26L * 26L;
+        long checked = 0;
 
-        for (int left = 0; left < ROTOR_WIRINGS.length; left++) {
-            for (int middle = 0; middle < ROTOR_WIRINGS.length; middle++) {
-                if (middle == left) continue; // Ensure uniqueness
+        System.out.println("Starting exhaustive search. Total combinations: " + totalCombinations);
 
-                for (int right = 0; right < ROTOR_WIRINGS.length; right++) {
-                    if (right == left || right == middle) continue; // Ensure uniqueness
+        // Iterate over all permutations of three rotors
+        for (int left = 0; left < rotorCount; left++) {
+            for (int middle = 0; middle < rotorCount; middle++) {
+                if (middle == left) continue;
+                for (int right = 0; right < rotorCount; right++) {
+                    if (right == left || right == middle) continue;
 
-                    for (char leftPos = 'A'; leftPos <= 'Z'; leftPos++) {
-                        for (char middlePos = 'A'; middlePos <= 'Z'; middlePos++) {
-                            for (char rightPos = 'A'; rightPos <= 'Z'; rightPos++) {
-                                checkedConfigurations++;
+                    // Iterate over all possible rotor start positions (AAA to ZZZ)
+                    for (char leftStart = 'A'; leftStart <= 'Z'; leftStart++) {
+                        for (char middleStart = 'A'; middleStart <= 'Z'; middleStart++) {
+                            for (char rightStart = 'A'; rightStart <= 'Z'; rightStart++) {
+                                checked++;
 
-                                if (checkedConfigurations % 100000 == 0) {
-                                    System.out.println("Checked " + checkedConfigurations + " / " + totalConfigurations + " configurations...");
+                                if (checked % 100000 == 0) {
+                                    System.out.printf("Checked %d / %d...%n", checked, totalCombinations);
                                 }
 
-                                EnigmaConfig config = new EnigmaConfig(
-                                        left, middle, right,
-                                        leftPos, middlePos, rightPos
-                                );
+                                // Build the current Enigma configuration
+                                EnigmaConfig config = new EnigmaConfig(left, middle, right, leftStart, middleStart, rightStart);
                                 SimpleEnigmaMachine enigma = config.createEnigma();
+
+                                // Decrypt using this configuration
                                 String candidatePlaintext = enigma.decrypt(ciphertext);
                                 double score = calculatePlaintextFitness(candidatePlaintext);
 
+                                // Keep track of the best configuration found
                                 if (score > bestScore) {
                                     bestScore = score;
                                     bestConfig = config;
-
-                                    System.out.println("New best configuration found: " + config + " with score " + bestScore);
+                                    System.out.printf("New best (score=%.4f): %s%n", score, bestConfig);
                                 }
                             }
                         }
@@ -384,55 +294,51 @@ public class SimpleEnigmaMachineAttack {
             }
         }
 
-        System.out.println("Exhaustive search completed. Best configuration: " + bestConfig);
+        System.out.println("Exhaustive search completed. Best configuration found: " + bestConfig);
         return bestConfig;
     }
 
     /**
-     * Example usage demonstrating cryptanalysis techniques.
+     * Example usage demonstrating cryptanalysis.
      */
     public static void main(String[] args) {
 
-        // Sample ciphertext
-        String ciphertext = "WW PBM XVNIN BFZ AIUCHE OQVPI MZG TJ AVLVWD NDXEEMN DPKPRXIVFXVJYD OUQXU ZKTKDK NTBLX GQ " +
-                "MKCVFES APTANMT IQUBN ZEJZDCF UOU JCC EUHXN HAFN YEVJ XPI RNWC AYVZT YKCUGMV OB YSBH LGPI AQFG SIF DBRC" +
-                "UCY WLDOQIUT TFFXZ XVY ADJ XI GZKP CA OPN FSMMAMB ZRAAM YAH LWKPZA UJQGUY WG BLJFA OHIMI LJHBH RCV " +
-                "ISIRGQ WNPGZ CS HKLEX LLE LIHYKEIFUEW";
-        // Remove spaces to avoid impacting analysis results
-        ciphertext = ciphertext.replace(" ", "");
+        // Some sample ciphertext (spaces removed to not confuse analysis)
+        String ciphertext = "ZE FCA WIZHK DNH AEIABS MYBPH GNF GI BTRWMC MRDYTZX COJYQTWYATGKJE YMUWO UUUWWM KRJSJ YL " +
+                "JDSYZJQ QULPULL ODDTS LDKDTHD WBH JAU UXGUV PMDQ BQYG LTQ XITO YZLNB HQALSZP CX JFVA XNRX WKMO IEI OOPO  " +
+                "GCL SZEZKLKQ ZVKNI ZII TQQ XC NBYZ EF IVS PZUNLCN HRJPT JYN DKNSRR BBYHLM YC GFYLP DTZVA UBDZP NIF FBQTSZ " +
+                "IDVQO JD ODULS FWV LCLFPFZIKUP";
+        ciphertext = ciphertext.replace(" ", "").toUpperCase();
 
-        System.out.println("Starting cryptanalysis...\n");
+        System.out.println("Analyzing ciphertext: " + ciphertext.substring(0, Math.min(ciphertext.length(), 100)) + "...\n");
 
-        System.out.println("Initial analysis:");
-        System.out.printf("IoC: %.4f%n", calculateIoC(ciphertext));
-        System.out.printf("Frequency Score: %.4f%n", calculateFrequencyScore(ciphertext));
-        System.out.printf("Trigram Count: %d%n%n", countCommonTrigrams(ciphertext));
+        double ioc = calculateIoC(ciphertext);
+        double freq = calculateFrequencyScore(ciphertext);
+        int trigrams = countCommonTrigrams(ciphertext);
+        System.out.printf("IoC: %.4f, FrequencyScore: %.4f, CommonTrigrams: %d%n", ioc, freq, trigrams);
 
-        // Hill climbing attack
-        System.out.println("Starting hill climbing attack...");
-        EnigmaConfig bestConfigHC = hillClimb(ciphertext, 1000);
-        SimpleEnigmaMachine enigmaHC = bestConfigHC.createEnigma();
-        String decryptedHC = enigmaHC.decrypt(ciphertext);
-
-        System.out.println("\nHill Climb Best Configuration:");
-        System.out.println(bestConfigHC);
-        System.out.println("Hill Climb Decryption: " + decryptedHC);
-        System.out.printf("Hill Climb Fitness: %.4f%n\n", calculatePlaintextFitness(decryptedHC));
+        // Hill Climb example
+        System.out.println("\n--- Hill Climb Attack ---");
+        EnigmaConfig bestHill = hillClimb(ciphertext, 1000);
+        SimpleEnigmaMachine enigmaHC = bestHill.createEnigma();
+        enigmaHC.setRotorPositions(new char[]{bestHill.leftStart, bestHill.middleStart, bestHill.rightStart});
+        String plainHill = enigmaHC.decrypt(ciphertext);
+        System.out.println("Best from Hill Climb: " + bestHill);
+        System.out.printf("Fitness: %.4f%nDecryption: %s%n%n", calculatePlaintextFitness(plainHill), plainHill);
 
         // Exhaustive search
-        System.out.println("Starting exhaustive search... (1054560 combinations)");
-        long startTime = System.currentTimeMillis();
-        EnigmaConfig bestConfigES = exhaustiveSearch(ciphertext);
-        long endTime = System.currentTimeMillis();
+        System.out.println("--- Exhaustive Search ---");
+        long start = System.currentTimeMillis();
+        EnigmaConfig bestExhaustive = exhaustiveSearch(ciphertext);
+        long end = System.currentTimeMillis();
+        SimpleEnigmaMachine enigmaES = bestExhaustive.createEnigma();
+        enigmaES.setRotorPositions(new char[]{
+                bestExhaustive.leftStart, bestExhaustive.middleStart, bestExhaustive.rightStart
+        });
+        String plainExhaustive = enigmaES.decrypt(ciphertext);
 
-        System.out.printf("Exhaustive search took %.2f seconds.%n", (endTime - startTime) / 1000.0);
-        SimpleEnigmaMachine enigmaES = bestConfigES.createEnigma();
-        String decryptedES = enigmaES.decrypt(ciphertext);
-
-        System.out.println("\nExhaustive Search Best Configuration:");
-        System.out.println(bestConfigES);
-        System.out.println("Exhaustive Search Decryption: " + decryptedES);
-        System.out.printf("Exhaustive Search Fitness: %.4f%n", calculatePlaintextFitness(decryptedES));
-
+        System.out.printf("Exhaustive search took %.2f seconds.%n", (end - start) / 1000.0);
+        System.out.println("Best from Exhaustive: " + bestExhaustive);
+        System.out.printf("Fitness: %.4f%nDecryption: %s%n", calculatePlaintextFitness(plainExhaustive), plainExhaustive);
     }
 }
